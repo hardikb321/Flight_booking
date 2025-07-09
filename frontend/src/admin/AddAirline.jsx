@@ -42,7 +42,7 @@ const AddAirline = () => {
 
       // Send data to backend API
       const response = await axios.post(
-        "http://localhost:5000/api/v1/flights/addAirline",
+        "http://localhost:5001/api/v1/flights/addAirline",
         airlineData
       );
 
