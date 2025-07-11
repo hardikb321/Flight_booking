@@ -72,7 +72,7 @@ export const getCheckoutSession = async (req, res) => {
       
       session = {
         id: `mock_session_${bookingUID}`,
-        url: `${process.env.CLIENT_SITE_URL || "http://localhost:3000/"}checkout-page?session_id=mock_session_${bookingUID}&success=true`,
+       url: `http://localhost:5173/checkout-page?session_id=mock_session_{bookingUID}&success=true`,
         payment_status: "paid",
         customer_email: user.email,
         client_reference_id: req.params.flightId,
