@@ -1,5 +1,5 @@
 const upload_preset = "flightBookingApp";
-const cloud_name = "dmjgdrcme";
+const cloud_name = "dpxmuxnkj";
 
 const uploadImageToCloudinary = async (file) => {
   const uploadData = new FormData();
