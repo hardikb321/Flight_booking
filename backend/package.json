@@ -19,6 +19,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "fastify": "^4.26.2",
+    "googleapis": "^153.0.0",
     "jsonwebtoken": "^9.0.2",
     "jsqr": "^1.4.0",
     "mongodb": "^6.5.0",

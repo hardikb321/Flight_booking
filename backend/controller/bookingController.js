@@ -23,7 +23,7 @@ export const getCheckoutSession = async (req, res) => {
       flight.bookedSeats = [];
     }
 
-    const { bookingUsersData, selectedSeats } = req.body;
+    const { bookingUsersData, selectedSeats, createCalendarEvent } = req.body;
     const bookingUID = generateUID();
 
     let ticket = await Ticket.findOne({ uid: bookingUID });
@@ -120,13 +120,93 @@ export const getCheckoutSession = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    // 📅 CREATE CALENDAR EVENT IF REQUESTED
+    let calendarEventResult = null;
+    
+    if (createCalendarEvent) {
+      try {
+        console.log("📅 Creating calendar event for flight booking...");
+        
+        // Create start and end times for the calendar event
+        const departureDateTime = new Date(`${flight.departDate}T${flight.departTime}`);
+        const arrivalDateTime = new Date(`${flight.arriveDate}T${flight.arriveTime}`);
+        
+        // Create reminder event 2 hours before departure
+        const reminderDateTime = new Date(departureDateTime.getTime() - 2 * 60 * 60 * 1000);
+        const reminderEndDateTime = new Date(reminderDateTime.getTime() + 30 * 60 * 1000); // 30 minutes duration
+        
+        const eventData = {
+          summary: `Flight Reminder: ${flight.airline.airlineName} ${flight.flightNumber}`,
+          description: `Flight Details:
+• Airline: ${flight.airline.airlineName}
+• Flight Number: ${flight.flightNumber}
+• From: ${flight.from}
+• To: ${flight.to}
+• Departure: ${flight.departDate} at ${flight.departTime}
+• Arrival: ${flight.arriveDate} at ${flight.arriveTime}
+• Seats: ${selectedSeats.join(', ')}
+• Passengers: ${numPassengers}
+• Booking ID: ${bookingUID}
+
+Remember to:
+- Arrive at the airport 2 hours early for domestic flights
+- Bring valid ID and boarding pass
+- Check baggage requirements`,
+          startDateTime: reminderDateTime.toISOString(),
+          endDateTime: reminderEndDateTime.toISOString(),
+          location: `${flight.from} Airport`
+        };
+        
+        // Make internal API call to create calendar event
+        const calendarResponse = await fetch('http://localhost:5001/api/v1/create-calendar-event', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(eventData)
+        });
+        
+        const calendarData = await calendarResponse.json();
+        
+        if (calendarData.status) {
+          console.log("✅ Calendar event created successfully:", calendarData.data.eventId);
+          calendarEventResult = {
+            status: true,
+            message: "Calendar event created successfully",
+            data: {
+              eventId: calendarData.data.eventId,
+              eventLink: calendarData.data.eventLink,
+              summary: calendarData.data.summary,
+              reminderTime: reminderDateTime.toISOString()
+            }
+          };
+        } else {
+          throw new Error(calendarData.message || "Failed to create calendar event");
+        }
+        
+      } catch (calendarError) {
+        console.error("❌ Error creating calendar event:", calendarError);
+        calendarEventResult = {
+          status: false,
+          message: `Calendar event creation failed: ${calendarError.message}`
+        };
+      }
+    }
+
+    const response = {
       success: true,
       message: process.env.NODE_ENV === "development" 
         ? "Mock Stripe checkout session created" 
         : "Stripe checkout session created",
       session,
-    });
+    };
+    
+    // Add calendar event result to response if it was requested
+    if (createCalendarEvent && calendarEventResult) {
+      response.calendarEvent = calendarEventResult;
+    }
+
+    res.status(200).json(response);
     
   } catch (error) {
     console.error("Error:", error);

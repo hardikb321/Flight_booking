@@ -9,7 +9,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { BACKENDURL } from "../Config/Config";
 import { authContext } from "../context/authContext";
-import uploadImageToCloudinary from "../utils/uploadImageToCloudinary"; // Import the image upload function
+import uploadImageToCloudinary from "../utils/uploadImageToCloudinary";
 import airplaneLoader from "../assets/images/airplaneLoader.gif";
 
 const TicketBooking = () => {
@@ -57,10 +57,14 @@ const TicketBooking = () => {
         }
       }
 
-      console.log({
+      const bookingData = {
         bookingUsersData: formData,
         selectedSeats: selectedSeatsArray,
-      });
+        createCalendarEvent: true,
+        
+      };
+
+      console.log("Booking data:", bookingData);
 
       // Send booking data to the backend
       const response = await fetch(
@@ -71,17 +75,30 @@ const TicketBooking = () => {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            bookingUsersData: formData,
-            selectedSeats: selectedSeatsArray,
-          }),
+          body: JSON.stringify(bookingData),
         }
       );
 
       const data = await response.json();
-      console.log(data);
+      console.log("Response:", data);
 
-      window.location.href = data.session.url;
+      
+
+      // If no conflicts or conflicts were ignored, proceed with booking
+      if (data.success) {
+        // Check if calendar event was created successfully
+        if (data.calendarEvent && data.calendarEvent.status) {
+          console.log("✅ Calendar event created:", data.calendarEvent.data);
+          toast.success("Flight booked and calendar event created successfully!");
+        } else if (data.calendarEvent && !data.calendarEvent.status) {
+          console.log("❌ Calendar event creation failed:", data.calendarEvent.message);
+          toast.warn("Flight booked but calendar event creation failed");
+        }
+
+        window.location.href = data.session.url;
+      } else {
+        toast.error(data.message || "An error occurred during booking");
+      }
     } catch (error) {
       console.error("Error:", error);
     }
