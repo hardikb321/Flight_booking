@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 
 const GOOGLE_CLIENT_ID="22378356786-7lc62harj5csrpfhl3s20d1vha70f24q.apps.googleusercontent.com"
 const GOOGLE_SECRET_KEY="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"
-const refresh_token=process.env.REFRESH_TOKEN
+
 
 mongoose.set("strictQuery", false);
 const connectDB = async () => {
@@ -142,6 +142,71 @@ app.post("/api/v1/create-tokens", async (req, res) => {
   }
 });
 
+// First, add this new endpoint to your server (paste-2.txt)
+// Add this endpoint in your server file before the existing endpoints
+
+app.get("/api/v1/get-calendar-events", async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        status: false,
+        message: "Start date and end date are required"
+      });
+    }
+    
+    // Initialize Google OAuth2 client
+    const oauth2Client = new google.auth.OAuth2(
+      GOOGLE_CLIENT_ID,
+      GOOGLE_SECRET_KEY,
+      'http://localhost:5173'
+    );
+    
+    // Set credentials - use the default refresh token
+    oauth2Client.setCredentials({
+      refresh_token: process.env.REFRESH_TOKEN
+    });
+    
+    // Initialize Google Calendar API
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+    
+    try {
+      // Get events from calendar
+      const response = await calendar.events.list({
+        calendarId: 'primary',
+        timeMin: startDate,
+        timeMax: endDate,
+        singleEvents: true,
+        orderBy: 'startTime',
+      });
+      
+      const events = response.data.items || [];
+      
+      res.json({
+        status: true,
+        data: events,
+        message: "Calendar events retrieved successfully"
+      });
+      
+    } catch (calendarError) {
+      console.error("Error fetching calendar events:", calendarError);
+      
+      return res.status(500).json({
+        status: false,
+        message: "Failed to fetch calendar events",
+        error: calendarError.message
+      });
+    }
+    
+  } catch (error) {
+    console.error("Error in fetching calendar events:", error);
+    res.status(500).json({
+      status: false,
+      message: "Internal server error"
+    });
+  }
+});
 // New endpoint for creating Google Calendar events
 app.post("/api/v1/create-calendar-event", async (req, res) => {
   try {
@@ -169,10 +234,10 @@ app.post("/api/v1/create-calendar-event", async (req, res) => {
       GOOGLE_SECRET_KEY,
       'http://localhost:5173'
     );
-    
+    console.log("REFRESH_TOKEN:", process.env.REFRESH_TOKEN); // Debug print
     // Set credentials - use the default refresh token
     oauth2Client.setCredentials({
-      refresh_token: refresh_token
+      refresh_token: process.env.REFRESH_TOKEN
     });
     
     // Initialize Google Calendar API
